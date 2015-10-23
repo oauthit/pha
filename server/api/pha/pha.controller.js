@@ -6,9 +6,12 @@ exports.mobileNumber = function(req, res) {
   if (req.body.mobileNumber) {
     //check if mobile number valid
     //check if mobile number already in regacc
-
-    //if not, write to regacc mobile number, last attempt, number of attempts
-    //else decrement count in regacc
+      //if not, write to regacc mobile number, last attempt, number of attempts
+      //else decrement count in regacc
+        //if count 0
+          // check last attempt, if (now - last attempt) < 24 hours
+            //send error
+          // else reset count
 
     //generate sms code
     //try to send message if message sent generate code
