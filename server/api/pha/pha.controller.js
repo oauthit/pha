@@ -2,8 +2,9 @@
 
 var _ = require('lodash');
 
-exports.mobileNumber = function(req, res) {
-  if (req.body.mobileNumber) {
+exports.auth = function(req, res) {
+
+  if (mobileNumber) {
     //check if mobile number valid
     //check if mobile number already in regacc
       //if not, write to regacc mobile number, last attempt, number of attempts
@@ -16,10 +17,12 @@ exports.mobileNumber = function(req, res) {
     //generate sms code
     //try to send message if message sent generate code
     //write to regdata code and sent sms code, sms code entry retries
+
+
   }
 };
 
-exports.createAccessToken = function(req, res) {
+exports.token = function(req, res) {
   //get sms code and code from client,
   //find regdata by mobile number
   //check regdata for code, sms code and mobile number
@@ -29,7 +32,7 @@ exports.createAccessToken = function(req, res) {
   //if no accounts create new account and new access token with accountId, set expiration date and code
 };
 
-exports.getAccessToken = function (req, res) {
+exports.roles = function (req, res) {
   //find account with authId,
   //if none found return unauthorized
 };
