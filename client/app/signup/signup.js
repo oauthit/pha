@@ -3,9 +3,9 @@
 angular.module('phaApp')
   .config(function ($stateProvider) {
     $stateProvider
-      .state('main', {
+      .state('signup', {
         url: '/',
-        templateUrl: 'app/main/main.html',
-        controller: 'MainCtrl'
+        templateUrl: 'app/signup/signup.html',
+        controller: 'SignupCtrl'
       });
   });

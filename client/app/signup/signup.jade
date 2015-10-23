@@ -1,0 +1,15 @@
+md-content.md-padding
+  md-card.login-card
+    md-card-content
+      h2.md-title Регистрация
+      p
+        | Введите ваш номер телефона
+      form(name='form', ng-submit='', novalidate='')
+        md-input-container
+          label Номер телефона
+          input(required='', name='phone')
+          div(ng-messages='form.phone.$error')
+            div(ng-message='required') Обязательно заполнить.
+        md-input-container
+        div(layout='row')
+          md-button.md-primary(type='submit') Выслать код для подтверждения

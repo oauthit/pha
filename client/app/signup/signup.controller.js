@@ -1,6 +1,6 @@
 'use strict';
 
 angular.module('phaApp')
-  .controller('MainCtrl', function () {
+  .controller('SignupCtrl', function () {
 
   });
