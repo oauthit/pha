@@ -5,8 +5,8 @@ var controller = require('./pha.controller');
 
 var router = express.Router();
 
-router.post('/auth', controller.auth);
-router.post('/token', controller.token);
 router.get('/roles', controller.roles);
+router.post('/auth/:phoneNumber', controller.auth);
+router.post('/token', controller.token);
 
 module.exports = router;
