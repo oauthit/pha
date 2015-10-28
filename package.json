@@ -17,6 +17,7 @@
     "method-override": "~1.0.0",
     "morgan": "~1.0.0",
     "node-uuid": "^1.4.3",
+    "q": "^1.4.1",
     "redis": "^2.2.5",
     "request": "^2.65.0",
     "serve-favicon": "~2.0.1"
