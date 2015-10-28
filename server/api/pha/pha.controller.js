@@ -2,23 +2,29 @@
 
 var _ = require('lodash');
 var crypto = require('crypto');
-var redis = require('redis');
-var Account = require('./pha.models').account;
+
+var request = require('request');
 var uuid = require('node-uuid');
+var Q = require('q');
+var inMemoryRegData = require('../../inMemory');
+var inMemoryRegAccounts = require('../../inMemory');
+var Account = require('./pha.models').account;
 var AccessToken = require('./pha.models').accessToken;
-var client = redis.createClient();
 var NUM_SENDING_COUNT = process.env.PHONE_NUMBER_SENDING_COUNT || 3;
 var SMS_SENDING_COUNT = process.env.SMS_SENDING_COUNT || 3;
-var PHONE_BLOCK_TIME = process.env.PHONE_NUMBER_BLOCKING_TIME || 24*60*60*1000;
-var TOKEN_EXISTENCE_TIME = process.env.TOKEN_EXISTENCE_TIME || 24*60*60*1000;
-
-client.on('error', function (err) {
-  console.log('Error ' + err);
-});
+var PHONE_BLOCK_TIME = process.env.PHONE_NUMBER_BLOCKING_TIME || 24 * 60 * 60 * 1000;
+var TOKEN_EXISTENCE_TIME = process.env.TOKEN_EXISTENCE_TIME || 24 * 60 * 60 * 1000;
+var SMS_SERVICE_TOKEN = process.env.SMS_SERVICE_TOKEN;
 
 exports.auth = function (req, res) {
 
   var phoneNumber = req.params.phoneNumber || undefined;
+  if (!phoneNumber) {
+    return res.send(400, {
+      message: 'Phone number must be passed'
+    });
+  }
+
   if (phoneNumber) {
     processPhoneNumber(res, phoneNumber);
   }
@@ -36,13 +42,12 @@ exports.token = function (req, res) {
 };
 
 exports.roles = function (req, res) {
-  //find account with authId,
-  //if none found return unauthorized
+
 };
 
 function proceedTokenCreation(res, data) {
   function checkIfSmsCodeValid() {
-    client.get("registration_data:" + data.phoneNumber, function (err, regData) {
+    inMemoryRegData.get(data.phoneNumber, function (err, regData) {
       if (err) return handleError(res, err);
 
       if (!regData) {
@@ -51,9 +56,8 @@ function proceedTokenCreation(res, data) {
         });
       }
 
-      regData = JSON.parse(regData);
       if (regData.attemptsCount <= 0) {
-        client.del("registration_data:" + data.phoneNumber, function (err) {
+        inMemoryRegData.del(data.phoneNumber, function (err) {
           if (err) return handleError(res, err);
           //redirect to sms code sending
         });
@@ -61,8 +65,7 @@ function proceedTokenCreation(res, data) {
 
       if (!(regData.smsCode === data.smsCode && regData.phoneNumber === data.phoneNumber && regData.code === data.code)) {
         regData.attemptsCount--;
-        regData = JSON.stringify(regData);
-        client.set("registration_data:" + data.phoneNumber, regData, function (err) {
+        inMemoryRegData.set(data.phoneNumber, regData, function (err) {
           if (err) handleError(res, err);
         });
       }
@@ -126,17 +129,35 @@ function proceedTokenCreation(res, data) {
 }
 
 function processPhoneNumber(res, phoneNumber) {
+
   function checkPhoneNumber(phoneNumber) {
     //TODO: implement validation
   }
 
   function generateSms(phoneNumber) {
-    var smsCode = crypto.createHash('sha1').update(phoneNumber.toString()).digest('hex').substr(0,6);
+    var smsCode = crypto.createHash('sha1').update(phoneNumber.toString()).digest('hex').substr(0, 6);
     return smsCode;
   }
 
   function sendSmsMessage(phoneNumber, smsCode) {
     //send message
+    var deferred = Q.defer();
+    var options = {
+      url: "https://asa2.sistemium.com/r50d/util/sms?phone=" + phoneNumber + "&msg=" + smsCode,
+      headers: {
+        'authorization': SMS_SERVICE_TOKEN
+      }
+    };
+    function callback(error, res, body) {
+      if (!error && res.statusCode == 200) {
+        console.log(body);
+        deferred.resolve();
+      } else {
+        deferred.reject('Sms was not sent!');
+      }
+    }
+    request(options, callback);
+    return deferred.promise;
   }
 
   /**
@@ -144,14 +165,18 @@ function processPhoneNumber(res, phoneNumber) {
    * @param {number} phoneNumber
    * @returns {{code: *, smsCode: *}}
    */
-  function generateResponse(phoneNumber) {
+  function generateResponse(phoneNumber, next) {
     var smsCode = generateSms(phoneNumber);
-    sendSmsMessage(phoneNumber, smsCode);
-    var code = crypto.createHash('sha1').update(phoneNumber.toString()).digest('hex');
-    return {
-      code: code,
-      smsCode: smsCode
-    };
+    sendSmsMessage(phoneNumber, smsCode).then(function () {
+      var code = crypto.createHash('sha1').update(phoneNumber.toString()).digest('hex');
+      next({
+        code: code,
+        smsCode: smsCode
+      });
+    }, function (err) {
+      throw new Error(err);
+    });
+
   }
 
   /**
@@ -160,11 +185,10 @@ function processPhoneNumber(res, phoneNumber) {
    * @param {Object} account - Account info for save.
    * @param {function} next - Callback.
    */
-  function registerAccount(phoneNumber, account, next) {
-    client.set("registration_account:" + phoneNumber, account, function (err, res) {
+  function registerAccount(res, phoneNumber, account, next) {
+    inMemoryRegAccounts.set(phoneNumber, account, function (err) {
       if (err) handleError(res, err);
-      var regData = generateResponse(phoneNumber);
-      next(regData);
+      generateResponse(phoneNumber, next);
     });
   }
 
@@ -175,49 +199,46 @@ function processPhoneNumber(res, phoneNumber) {
    * @param {Object} regData - Registration data.
    */
   function registerData(res, phoneNumber, regData) {
-      regData.smsSendingAttempts = SMS_SENDING_COUNT;
-      regData = JSON.stringify(regData);
-      client.set("registration_data:" + phoneNumber, regData, function (err) {
-        if (err) return handleError(res, err);
-        regData = JSON.parse(regData);
-        return res.status(204).json({
-          phoneNumber: phoneNumber,
-          code: regData.code,
-          smsCode: regData.smsCode
-        });
+    regData.smsSendingAttempts = SMS_SENDING_COUNT;
+    inMemoryRegData.set(phoneNumber, regData, function (err) {
+      if (err) return handleError(res, err);
+      return res.status(201).json({
+        phoneNumber: phoneNumber,
+        code: regData.code,
+        smsCode: regData.smsCode
       });
+    });
   }
 
   checkPhoneNumber(phoneNumber);
 
-  client.get("registration_account:" + phoneNumber, function (err, regData) {
+  inMemoryRegAccounts.get(phoneNumber, function (err, account) {
     if (err) {
       return handleError(res, err);
     }
 
-    var regAcc = JSON.stringify({
-      lastAttempt: Date.now(),
-      attemptsCount: NUM_SENDING_COUNT
-    });
-    if (!regData) {
-      registerAccount(phoneNumber, regAcc, function (regData) {
+    if (!account) {
+      var regAcc = {
+        lastAttempt: Date.now(),
+        attemptsCount: NUM_SENDING_COUNT
+      };
+      registerAccount(res, phoneNumber, regAcc, function (regData) {
+        console.log(regData);
         registerData(res, phoneNumber, regData);
       });
     }
     else {
-      regData = JSON.parse(regData);
-      var timePassedSinceLastAttempt = Date.now() - regData.lastAttempt;
+      var timePassedSinceLastAttempt = Date.now() - account.lastAttempt;
       if (timePassedSinceLastAttempt >= PHONE_BLOCK_TIME) {
-        regData.attemptsCount = NUM_SENDING_COUNT;
-        regAcc = JSON.stringify(regData);
-        registerAccount(phoneNumber, regAcc, function (regData) {
+        account.attemptsCount = NUM_SENDING_COUNT;
+        registerAccount(phoneNumber, account, function (regData) {
           registerData(res, phoneNumber, regData);
         });
       } else {
         var blockingTime = PHONE_BLOCK_TIME - timePassedSinceLastAttempt;
         var until = new Date(Date.now() + blockingTime);
-        res.send(400, {
-          message: 'This phone number blocked for ' + until
+        res.send(403, {
+          message: 'This phone number blocked until ' + until
         });
       }
     }
