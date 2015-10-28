@@ -4,10 +4,10 @@ md-content.md-padding
       h2.md-title Регистрация
       p
         | Введите ваш номер телефона
-      form(name='form', ng-submit='', novalidate='')
+      form(name='form', ng-submit='ctrl.sendPhoneNumber()', novalidate='')
         md-input-container
           label Номер телефона
-          input(required='', name='phone')
+          input(required='', ng-model='ctrl.phoneNumber' name='phone')
           div(ng-messages='form.phone.$error')
             div(ng-message='required') Обязательно заполнить.
         md-input-container

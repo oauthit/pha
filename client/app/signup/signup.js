@@ -6,6 +6,7 @@ angular.module('phaApp')
       .state('signup', {
         url: '/',
         templateUrl: 'app/signup/signup.html',
-        controller: 'SignupCtrl'
+        controller: 'SignupCtrl',
+        controllerAs: 'ctrl'
       });
   });
