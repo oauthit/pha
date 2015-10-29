@@ -148,15 +148,14 @@ function processPhoneNumber(res, phoneNumber) {
         'authorization': SMS_SERVICE_TOKEN
       }
     };
-    function callback(error, res, body) {
+    function callback(error, res) {
       if (!error && res.statusCode == 200) {
-        console.log(body);
         deferred.resolve();
       } else {
         deferred.reject('Sms was not sent!');
       }
     }
-    request(options, callback);
+    request.get(options, callback);
     return deferred.promise;
   }
 
@@ -218,28 +217,39 @@ function processPhoneNumber(res, phoneNumber) {
     }
 
     if (!account) {
+      //set initial regAcc
       var regAcc = {
         lastAttempt: Date.now(),
         attemptsCount: NUM_SENDING_COUNT
       };
       registerAccount(res, phoneNumber, regAcc, function (regData) {
-        console.log(regData);
         registerData(res, phoneNumber, regData);
       });
     }
     else {
-      var timePassedSinceLastAttempt = Date.now() - account.lastAttempt;
-      if (timePassedSinceLastAttempt >= PHONE_BLOCK_TIME) {
-        account.attemptsCount = NUM_SENDING_COUNT;
-        registerAccount(phoneNumber, account, function (regData) {
-          registerData(res, phoneNumber, regData);
+      if (account.attemptsCount >= 0) {
+        account.attemptsCount--;
+        account.lastAttempt = Date.now();
+        inMemoryRegAccounts.set(phoneNumber, account, function (err) {
+          if (err) return handleError(res, err);
+          registerAccount(res, phoneNumber, regAcc, function (regData) {
+            registerData(res, phoneNumber, regData);
+          });
         });
       } else {
-        var blockingTime = PHONE_BLOCK_TIME - timePassedSinceLastAttempt;
-        var until = new Date(Date.now() + blockingTime);
-        res.send(403, {
-          message: 'This phone number blocked until ' + until
-        });
+        var timePassedSinceLastAttempt = Date.now() - account.lastAttempt;
+        if (timePassedSinceLastAttempt >= PHONE_BLOCK_TIME) {
+          account.attemptsCount = NUM_SENDING_COUNT;
+          registerAccount(phoneNumber, account, function (regData) {
+            registerData(res, phoneNumber, regData);
+          });
+        } else {
+          var blockingTime = PHONE_BLOCK_TIME - timePassedSinceLastAttempt;
+          var until = new Date(Date.now() + blockingTime);
+          res.send(403, {
+            message: 'This phone number blocked until ' + until
+          });
+        }
       }
     }
   });
