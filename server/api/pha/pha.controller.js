@@ -6,8 +6,9 @@ var crypto = require('crypto');
 var request = require('request');
 var uuid = require('node-uuid');
 var Q = require('q');
-var inMemoryRegData = require('../../inMemory');
-var inMemoryRegAccounts = require('../../inMemory');
+var InMemory = require('../../inMemory');
+var inMemoryRegData = new InMemory();
+var inMemoryRegAccounts = new InMemory();
 var Account = require('./pha.models').account;
 var AccessToken = require('./pha.models').accessToken;
 var NUM_SENDING_COUNT = process.env.PHONE_NUMBER_SENDING_COUNT || 3;
@@ -155,7 +156,9 @@ function processPhoneNumber(res, phoneNumber) {
         deferred.reject('Sms was not sent!');
       }
     }
-    request.get(options, callback);
+    //request.get(options, callback);
+    //do not send sms for now
+    deferred.resolve();
     return deferred.promise;
   }
 
@@ -227,12 +230,12 @@ function processPhoneNumber(res, phoneNumber) {
       });
     }
     else {
-      if (account.attemptsCount >= 0) {
-        account.attemptsCount--;
+      account.attemptsCount--;
+      if (account.attemptsCount > 0) {
         account.lastAttempt = Date.now();
         inMemoryRegAccounts.set(phoneNumber, account, function (err) {
           if (err) return handleError(res, err);
-          registerAccount(res, phoneNumber, regAcc, function (regData) {
+          registerAccount(res, phoneNumber, account, function (regData) {
             registerData(res, phoneNumber, regData);
           });
         });

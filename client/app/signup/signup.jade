@@ -2,14 +2,23 @@ md-content.md-padding
   md-card.login-card
     md-card-content
       h2.md-title Регистрация
-      p
+      p(ng-show='!ctrl.code')
         | Введите ваш номер телефона
-      form(name='form', ng-submit='ctrl.sendPhoneNumber()', novalidate='')
+      p(ng-show='ctrl.code')
+        | На ваш указанный номер был выслан код, введите его ниже
+      form(name='form', novalidate='')
         md-input-container
           label Номер телефона
-          input(required='', ng-model='ctrl.phoneNumber' name='phone')
+          input(required='', ng-disabled='!!ctrl.code' ng-model='ctrl.phoneNumber' name='phone')
           div(ng-messages='form.phone.$error')
+            div(ng-message='required' ng-show='!ctrl.code') Обязательно заполнить.
+        md-input-container
+        md-input-container(ng-show='ctrl.code')
+          label Код
+          input(required='', ng-model='ctrl.smsCode' name='code')
+          div(ng-messages='form.code.$error')
             div(ng-message='required') Обязательно заполнить.
         md-input-container
         div(layout='row')
-          md-button.md-primary(type='submit') Выслать код для подтверждения
+          md-button.md-primary(type='button' ng-show='!ctrl.code' ng-click='ctrl.sendPhoneNumber()') Выслать код
+          md-button.md-primary(type='button' ng-show='ctrl.code' ng-click='ctrl.confirmSmsCode()') Подтвердить код

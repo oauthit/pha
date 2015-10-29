@@ -1,4 +1,4 @@
-module.exports = new InMemoryData();
+module.exports = InMemoryData;
 
 function InMemoryData() {
   var data = {};
