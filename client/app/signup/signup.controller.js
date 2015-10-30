@@ -1,7 +1,7 @@
 'use strict';
 
 angular.module('phaApp')
-  .controller('SignupCtrl', ['$http', '$scope', function ($http, $scope) {
+  .controller('SignupCtrl', ['$http', '$state', function ($http, $state) {
     var me = this;
     var smsCode;
     me.code = false;
@@ -26,7 +26,7 @@ angular.module('phaApp')
         }
       }
 
-      validateSmsCode();
+      //validateSmsCode();
       var data = {
         phoneNumber: me.phoneNumber,
         code: me.code,
@@ -34,9 +34,10 @@ angular.module('phaApp')
       };
       $http.post('/api/pha/token', data)
         .then(function (res) {
-
+          $state.go('authorized', res);
         }, function (err) {
-
+          console.log(err);
+          me.code = false;
         })
     };
   }]);

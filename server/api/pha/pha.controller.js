@@ -36,6 +36,7 @@ exports.token = function (req, res) {
   var smsCode = fromBody.smsCode || undefined;
   var code = fromBody.code || undefined;
   var phoneNumber = fromBody.phoneNumber || undefined;
+  fromBody.id ? fromBody.id : fromBody.id = uuid.v4();
 
   if (smsCode && code && phoneNumber) {
     proceedTokenCreation(res, fromBody);
@@ -43,7 +44,20 @@ exports.token = function (req, res) {
 };
 
 exports.roles = function (req, res) {
-
+  if (req.body.accessToken) {
+    AccessToken.scan({code: req.body.accessToken}, function (err, accessTokens) {
+      if (err) return handleError(res, err);
+      if (!accessTokens) {
+        return res.send(403);
+      }
+      var accessToken = accessTokens[0];
+      Account.get(accessToken.accountId, function (err, account) {
+        if (err) return handleError(res, err);
+        if (!account) return res.send(403);
+        res.send(200, account);
+      });
+    })
+  }
 };
 
 function proceedTokenCreation(res, data) {
@@ -73,12 +87,13 @@ function proceedTokenCreation(res, data) {
     });
   }
 
-  function findAccount(data, next) {
+  function findAccount(res, data, next) {
     var phoneNumber = data.phoneNumber;
     Account.scan({phoneNumber: phoneNumber}, function (err, accounts) {
       if (err) handleError(res, err);
 
-      if (!accounts) {
+      console.log(accounts);
+      if (!accounts || !accounts.length) {
         var account = {
           id: uuid.v4(),
           phoneNumber: data.phoneNumber,
@@ -112,7 +127,8 @@ function proceedTokenCreation(res, data) {
         var accessToken = {
           id: uuid.v4(),
           accountId: account.id,
-          expiresAt: Date.now() + TOKEN_EXISTENCE_TIME
+          expiresAt: Date.now() + TOKEN_EXISTENCE_TIME,
+          code: 'generateAccessTokenCode'
         };
         AccessToken.create(accessToken, function (err, accessToken) {
           if (err) return handleError(res, err);
@@ -126,7 +142,7 @@ function proceedTokenCreation(res, data) {
   }
 
   checkIfSmsCodeValid();
-  findAccount(data, createAccessToken);
+  findAccount(res, data, createAccessToken);
 }
 
 function processPhoneNumber(res, phoneNumber) {
@@ -156,9 +172,7 @@ function processPhoneNumber(res, phoneNumber) {
         deferred.reject('Sms was not sent!');
       }
     }
-    //request.get(options, callback);
-    //do not send sms for now
-    deferred.resolve();
+    request.get(options, callback);
     return deferred.promise;
   }
 

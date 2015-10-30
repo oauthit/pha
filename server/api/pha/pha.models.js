@@ -4,16 +4,19 @@ var dynamoose = require('dynamoose'),
     Schema = dynamoose.Schema;
 
 var AccountSchema = new Schema({
-  phoneNumber: {
+  id: {
     type: String,
     hashKey: true
+  },
+  phoneNumber: {
+    type: String
   },
   disabled: {
     type: Boolean
   }
 });
 
-exports.account = dynamoose.model('Account', AccountSchema);
+exports.account = dynamoose.model('AuthAccount', AccountSchema);
 
 var AccessTokenSchema = new Schema({
   id: {

@@ -1,50 +1,50 @@
 module.exports = InMemoryData;
 
 function InMemoryData() {
-  var data = {};
+  this.data = {};
+}
 
-  this.get = function (phoneNumber, callback) {
-    var args = Array.prototype.slice.call(arguments);
+InMemoryData.prototype.get = function (phoneNumber, callback) {
+  var args = Array.prototype.slice.call(arguments);
 
-    if (args.length === 2) {
-      if (data.hasOwnProperty(phoneNumber)) {
-        callback.apply(null, [null, data[phoneNumber]]);
-      } else {
-        callback.apply(null, [null]);
-      }
+  if (args.length === 2) {
+    if (this.data.hasOwnProperty(phoneNumber)) {
+      callback.apply(null, [null, this.data[phoneNumber]]);
     } else {
-      if (data.hasOwnProperty(phoneNumber)) {
-        return data[phoneNumber];
-      } else {
-        return null;
-      }
+      callback.apply(null, [null]);
     }
-  };
-
-  this.set = function (phoneNumber, regData, callback) {
-    var args = Array.prototype.slice.call(arguments);
-
-    if (args.length === 3) {
-      if (phoneNumber) {
-        data[phoneNumber] = regData;
-        callback.apply(null, [null]);
-      } else {
-        callback.apply(null, [null]);
-      }
-    } else if (phoneNumber) {
-      data[phoneNumber] = regData;
-      return data[phoneNumber];
+  } else {
+    if (this.data.hasOwnProperty(phoneNumber)) {
+      return this.data[phoneNumber];
     } else {
       return null;
     }
-  };
+  }
+};
 
-  this.del = function (phoneNumber, callback) {
-    if (data[phoneNumber]) {
-      delete data[phoneNumber];
+InMemoryData.prototype.set = function (phoneNumber, regData, callback) {
+  var args = Array.prototype.slice.call(arguments);
+
+  if (args.length === 3) {
+    if (phoneNumber) {
+      this.data[phoneNumber] = regData;
       callback.apply(null, [null]);
     } else {
-      callback.apply(null, [null])
+      callback.apply(null, [null]);
     }
+  } else if (phoneNumber) {
+    this.data[phoneNumber] = regData;
+    return this.data[phoneNumber];
+  } else {
+    return null;
   }
-}
+};
+
+InMemoryData.prototype.del = function (phoneNumber, callback) {
+  if (this.data[phoneNumber]) {
+    delete this.data[phoneNumber];
+    callback.apply(null, [null]);
+  } else {
+    callback.apply(null, [null])
+  }
+};
