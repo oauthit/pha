@@ -38,8 +38,11 @@ exports.token = function (req, res) {
   var phoneNumber = fromBody.phoneNumber || undefined;
   fromBody.id ? fromBody.id : fromBody.id = uuid.v4();
 
+
   if (smsCode && code && phoneNumber) {
     proceedTokenCreation(res, fromBody);
+  } else {
+    return res.send(403);
   }
 };
 
@@ -112,6 +115,7 @@ function proceedTokenCreation(res, data) {
           if (err) return handleError(res, err);
 
           if (accessToken) {
+            console.info(accessToken);
             return res.send(201, accessToken);
           }
         });
@@ -134,6 +138,7 @@ function proceedTokenCreation(res, data) {
           if (err) return handleError(res, err);
 
           if (accessToken) {
+            console.info(accessToken);
             return res.send(201, accessToken);
           }
         });
@@ -151,9 +156,14 @@ function processPhoneNumber(res, phoneNumber) {
     //TODO: implement validation
   }
 
-  function generateSms(phoneNumber) {
-    var smsCode = crypto.createHash('sha1').update(phoneNumber.toString()).digest('hex').substr(0, 6);
-    return smsCode;
+  function generateSms() {
+    var deferred = Q.defer();
+    crypto.randomBytes(3, function(err, buffer) {
+      if (err) deferred.reject(err);
+      var smsCode = parseInt(buffer.toString('hex'), 16).toString().substr(0,6);
+      deferred.resolve(smsCode);
+    });
+    return deferred.promise;
   }
 
   function sendSmsMessage(phoneNumber, smsCode) {
@@ -182,17 +192,19 @@ function processPhoneNumber(res, phoneNumber) {
    * @returns {{code: *, smsCode: *}}
    */
   function generateResponse(phoneNumber, next) {
-    var smsCode = generateSms(phoneNumber);
-    sendSmsMessage(phoneNumber, smsCode).then(function () {
-      var code = crypto.createHash('sha1').update(phoneNumber.toString()).digest('hex');
-      next({
-        code: code,
-        smsCode: smsCode
+    generateSms().then(function (smsCode) {
+      sendSmsMessage(phoneNumber, smsCode).then(function () {
+        var code = crypto.createHash('sha1').update(phoneNumber.toString()).digest('hex');
+        next({
+          code: code,
+          smsCode: smsCode
+        });
+      }, function (err) {
+        throw new Error(err);
       });
     }, function (err) {
-      throw new Error(err);
+      return handleError(res, err);
     });
-
   }
 
   /**
