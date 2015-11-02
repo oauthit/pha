@@ -104,18 +104,33 @@ describe('POST /api/pha/auth/:phoneNumber', function () {
 });
 
 describe('POST /api/pha/token', function () {
-  var accountCreateStub, accountScanStub, accessCreateTokenStub, inMemoryRegData;
+  var accountCreateStub
+    , accountScanStub
+    , accessCreateTokenStub
+    , inMemoryRegData
+    , inMemoryRegDataDel;
+
   var regData = {
     attemptsCount: 3,
     smsCode: 'code',
     code: 'code',
     phoneNumber: 'phoneNumber'
   };
+  var account = {
+    id: uuid.v4(),
+    smsCode: 'smsCode',
+    code: 'code',
+    phoneNumber: 'phoneNumber'
+  };
+  var accessToken = {
+    accountId: account.id
+  };
   beforeEach(function () {
     accountCreateStub = sinon.stub(Account, 'create');
     accountScanStub = sinon.stub(Account, 'scan');
     accessCreateTokenStub = sinon.stub(AccessToken, 'create');
     inMemoryRegData = sinon.stub(InMemory.prototype, 'get');
+    inMemoryRegDataDel = sinon.stub(InMemory.prototype, 'del');
   });
 
   afterEach(function () {
@@ -123,18 +138,11 @@ describe('POST /api/pha/token', function () {
     accountScanStub.restore();
     accessCreateTokenStub.restore();
     inMemoryRegData.restore();
+    inMemoryRegDataDel.restore();
   });
 
   it('should create new access token', function (done) {
-    var account = {
-      id: uuid.v4(),
-      smsCode: 'smsCode',
-      code: 'code',
-      phoneNumber: 'phoneNumber'
-    };
-    var accessToken = {
-      accountId: account.id
-    };
+
     accountScanStub.yields(null, null);
     accountCreateStub.yields(null, account);
     accessCreateTokenStub.yields(null, accessToken);
@@ -151,6 +159,39 @@ describe('POST /api/pha/token', function () {
         done();
       });
   });
+
+  it('should check if sms code valid', function (done) {
+    inMemoryRegData.withArgs(account.phoneNumber).yieldsAsync(null, null);
+
+    request(app)
+      .post('/api/pha/token')
+      .send(account)
+      .expect(403)
+      .expect('Content-Type', /json/)
+      .end(function (err) {
+        if (err) return done(err);
+        done();
+      });
+  });
+
+  it('should check sms code attempts', function (done) {
+    var regData = {
+      attemptsCount: 0
+    };
+    inMemoryRegData.withArgs(account.phoneNumber).yieldsAsync(null, regData);
+    inMemoryRegDataDel.withArgs(account.phoneNumber).yieldsAsync(null);
+    request(app)
+      .post('/api/pha/token')
+      .send(account)
+      .expect(200)
+      .expect('Content-Type', /json/)
+      .end(function (err) {
+        if (err) return done(err);
+        done();
+      });
+  });
+
+
 });
 
 describe('GET /api/pha/roles', function () {
@@ -185,6 +226,6 @@ describe('GET /api/pha/roles', function () {
         if (err) return done(err);
         res.body.should.have.property('id');
         done();
-      })
+      });
   });
 });

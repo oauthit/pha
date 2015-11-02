@@ -65,19 +65,19 @@ exports.roles = function (req, res) {
 
 function proceedTokenCreation(res, data) {
   function checkIfSmsCodeValid() {
+    var deferred = Q.defer();
     inMemoryRegData.get(data.phoneNumber, function (err, regData) {
       if (err) return handleError(res, err);
 
       if (!regData) {
-        return res.send(404, {
-          message: 'No such registration data'
-        });
+        deferred.reject(403);
       }
 
       if (regData.attemptsCount <= 0) {
         inMemoryRegData.del(data.phoneNumber, function (err) {
           if (err) return handleError(res, err);
           //redirect to sms code sending
+          deferred.reject(403);
         });
       }
 
@@ -86,8 +86,12 @@ function proceedTokenCreation(res, data) {
         inMemoryRegData.set(data.phoneNumber, regData, function (err) {
           if (err) handleError(res, err);
         });
+        //redirect to sms code sending
+        deferred.reject(400);
       }
+      deferred.resolve();
     });
+    return deferred.promise;
   }
 
   function findAccount(res, data, next) {
@@ -152,8 +156,11 @@ function proceedTokenCreation(res, data) {
     });
   }
 
-  checkIfSmsCodeValid();
-  findAccount(res, data, createAccessToken);
+  checkIfSmsCodeValid().then(function () {
+    findAccount(res, data, createAccessToken);
+  }, function (code) {
+    return res.send(code);
+  });
 }
 
 function processPhoneNumber(res, phoneNumber) {
@@ -183,6 +190,7 @@ function processPhoneNumber(res, phoneNumber) {
     };
     function callback(error, res) {
       if (!error && res.statusCode == 200) {
+        console.log('Sms message sent...');
         deferred.resolve();
       } else {
         deferred.reject('Sms was not sent!');
@@ -245,7 +253,6 @@ function processPhoneNumber(res, phoneNumber) {
   }
 
   checkPhoneNumber(phoneNumber);
-
   inMemoryRegAccounts.get(phoneNumber, function (err, account) {
     if (err) {
       return handleError(res, err);
