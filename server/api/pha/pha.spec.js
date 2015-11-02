@@ -8,7 +8,7 @@ var sinon = require('sinon');
 var Account = require('./pha.models').account;
 var AccessToken = require('./pha.models').accessToken;
 var uuid = require('node-uuid');
-var InMemory = require('../../inMemory');
+var InMemory = require('../../lib/inMemory');
 
 describe('POST /api/pha/auth/:phoneNumber', function () {
   var requestStub;
