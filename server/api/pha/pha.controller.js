@@ -6,7 +6,8 @@ var crypto = require('crypto');
 var request = require('request');
 var uuid = require('node-uuid');
 var Q = require('q');
-var InMemory = require('../../inMemory');
+var jwt = require('jsonwebtoken');
+var InMemory = require('../../lib/inMemory');
 var inMemoryRegData = new InMemory();
 var inMemoryRegAccounts = new InMemory();
 var Account = require('./pha.models').account;
@@ -128,11 +129,13 @@ function proceedTokenCreation(res, data) {
       if (err) handleError(res, err);
 
       if (account) {
+
+        var token = jwt.sign({accountId: account.id}, process.env.SESSION_SECRET);
         var accessToken = {
           id: uuid.v4(),
           accountId: account.id,
           expiresAt: Date.now() + TOKEN_EXISTENCE_TIME,
-          code: 'generateAccessTokenCode'
+          code: token
         };
         AccessToken.create(accessToken, function (err, accessToken) {
           if (err) return handleError(res, err);
