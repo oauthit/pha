@@ -6,7 +6,6 @@ var crypto = require('crypto');
 var request = require('request');
 var uuid = require('node-uuid');
 var Q = require('q');
-var jwt = require('jsonwebtoken');
 var InMemory = require('../../lib/inMemory');
 var inMemoryRegData = new InMemory();
 var inMemoryRegAccounts = new InMemory();
@@ -130,7 +129,11 @@ function proceedTokenCreation(res, data) {
 
       if (account) {
 
-        var token = jwt.sign({accountId: account.id}, process.env.SESSION_SECRET);
+        var token = crypto
+          .createHash('md5')
+          .update(uuid.v4())
+          .digest('hex');
+
         var accessToken = {
           id: uuid.v4(),
           accountId: account.id,
