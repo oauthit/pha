@@ -11,18 +11,28 @@ var uuid = require('node-uuid');
 var InMemory = require('../../lib/inMemory');
 
 describe('POST /api/pha/auth/:phoneNumber', function () {
-  var requestStub;
+  var requestStub, inMemoryRegAccountsGet, inMemoryRegAccountsSet;
   beforeEach(function (done) {
     requestStub = sinon.stub(req, 'get').yieldsAsync(null, {statusCode: 200});
+    inMemoryRegAccountsGet = sinon.stub(InMemory.prototype, 'get');
+    inMemoryRegAccountsSet = sinon.stub(InMemory.prototype, 'set');
     done();
   });
 
   afterEach(function () {
     requestStub.restore();
+    inMemoryRegAccountsGet.restore();
+    inMemoryRegAccountsSet.restore();
   });
 
   it('should return code and sms code', function (done) {
-    var phoneNumber = 12345;
+    var account = {
+      attemptsCount: 3
+    };
+
+    var phoneNumber = '12345';
+    inMemoryRegAccountsGet.withArgs(phoneNumber).yieldsAsync(null, account);
+    inMemoryRegAccountsSet.withArgs(phoneNumber).yieldsAsync(null);
     request(app)
       .post('/api/pha/auth/' + phoneNumber)
       .expect(201)
@@ -35,10 +45,66 @@ describe('POST /api/pha/auth/:phoneNumber', function () {
         done();
       });
   });
+
+  it('should create registration account if not already in memory', function (done) {
+    var phoneNumber = '12345';
+
+    inMemoryRegAccountsGet.withArgs(phoneNumber).yieldsAsync(null, null);
+    inMemoryRegAccountsSet.withArgs(phoneNumber).yieldsAsync(null);
+
+    request(app)
+      .post('/api/pha/auth/' + phoneNumber)
+      .expect(201)
+      .expect('Content-Type', /json/)
+      .end(function (err, res) {
+        if (err) return done(err);
+        res.body.should.have.property('phoneNumber');
+        res.body.should.have.property('code');
+        res.body.should.have.property('smsCode');
+        done();
+      });
+  });
+
+  it('should block sms sending attempts if attempts exceeded', function (done) {
+    var phoneNumber = '123423415';
+    var account = {
+      attemptsCount: 0,
+      lastAttempt: Date.now()
+    };
+    inMemoryRegAccountsGet.withArgs(phoneNumber).yieldsAsync(null, account);
+    request(app)
+      .post('/api/pha/auth/' + phoneNumber)
+      .expect(403)
+      .expect('Content-Type', /json/)
+      .end(function (err, res) {
+        if (err) return done(err);
+        done();
+      });
+  });
+
+  it('should allow send sms if blocking time passed since last attempt', function (done) {
+    var phoneNumber = '12453512';
+    var account = {
+      attemptsCount: 0,
+      lastAttempt: Date.now() - 24 * 60 * 60 * 1000
+    };
+
+    inMemoryRegAccountsGet.withArgs(phoneNumber).yieldsAsync(null, account);
+    inMemoryRegAccountsSet.withArgs(phoneNumber).yieldsAsync(null);
+
+    request(app)
+      .post('/api/pha/auth/' + phoneNumber)
+      .expect(201)
+      .expect('Content-Type', /json/)
+      .end(function (err) {
+        if (err) return done(err);
+        done();
+      });
+  });
 });
 
 describe('POST /api/pha/token', function () {
-  var accountCreateStub, accountScanStub, accessCreateTokenStub;
+  var accountCreateStub, accountScanStub, accessCreateTokenStub, inMemoryRegData;
   var regData = {
     attemptsCount: 3,
     smsCode: 'code',
@@ -49,14 +115,14 @@ describe('POST /api/pha/token', function () {
     accountCreateStub = sinon.stub(Account, 'create');
     accountScanStub = sinon.stub(Account, 'scan');
     accessCreateTokenStub = sinon.stub(AccessToken, 'create');
-    this.stub = sinon.stub(InMemory.prototype, 'get').yieldsAsync(null, regData);
+    inMemoryRegData = sinon.stub(InMemory.prototype, 'get');
   });
 
   afterEach(function () {
     accountCreateStub.restore();
     accountScanStub.restore();
     accessCreateTokenStub.restore();
-    this.stub.restore();
+    inMemoryRegData.restore();
   });
 
   it('should create new access token', function (done) {
@@ -72,6 +138,7 @@ describe('POST /api/pha/token', function () {
     accountScanStub.yields(null, null);
     accountCreateStub.yields(null, account);
     accessCreateTokenStub.yields(null, accessToken);
+    inMemoryRegData.yieldsAsync(null, regData);
 
     request(app)
       .post('/api/pha/token')

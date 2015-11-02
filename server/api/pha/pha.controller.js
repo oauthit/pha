@@ -275,7 +275,7 @@ function processPhoneNumber(res, phoneNumber) {
         var timePassedSinceLastAttempt = Date.now() - account.lastAttempt;
         if (timePassedSinceLastAttempt >= PHONE_BLOCK_TIME) {
           account.attemptsCount = NUM_SENDING_COUNT;
-          registerAccount(phoneNumber, account, function (regData) {
+          registerAccount(res, phoneNumber, account, function (regData) {
             registerData(res, phoneNumber, regData);
           });
         } else {
