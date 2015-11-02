@@ -85,3 +85,39 @@ describe('POST /api/pha/token', function () {
       });
   });
 });
+
+describe('GET /api/pha/roles', function () {
+  var accessTokenScan, accountGet;
+  beforeEach(function () {
+    accessTokenScan = sinon.stub(AccessToken, 'scan');
+    accountGet = sinon.stub(Account, 'get');
+  });
+  afterEach(function () {
+    accessTokenScan.restore();
+    accountGet.restore();
+  });
+
+  it('should return account if user authorized', function (done) {
+    var accessToken = 'acccessToken';
+    var account = {
+      id: uuid.v4()
+    };
+    var accessTokens = [
+      {
+        accountId: account.id
+      }
+    ];
+    accessTokenScan.withArgs({code: accessToken}).yieldsAsync(null, accessTokens);
+    accountGet.withArgs(accessTokens[0].accountId).yieldsAsync(null, account);
+
+    request(app)
+      .get('/api/pha/roles?accessToken=' + accessToken)
+      .expect(200)
+      .expect('Content-Type', /json/)
+      .end(function (err, res) {
+        if (err) return done(err);
+        res.body.should.have.property('id');
+        done();
+      })
+  });
+});
