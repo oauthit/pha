@@ -10,6 +10,11 @@ angular.module('phaApp')
 
         $http.post('/api/pha/auth/' + me.phoneNumber)
           .then(function (res) {
+            if (res.data.accountId) {
+              //put access token to local storage?
+              me.accessToken = me.code;
+              $state.go('authorized', res);
+            }
             me.code = res.data.code;
           }, function () {
             $mdToast.show($mdToast.simple().content('Неправильный телефон'));

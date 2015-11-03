@@ -270,11 +270,12 @@ function processPhoneNumber(res, phoneNumber) {
       var account = accounts[0];
       console.log(account);
 
-      AccessToken.scan({accountId: account.id}, function (err, accessToken) {
+      AccessToken.scan({accountId: account.id}, function (err, accessTokens) {
         if (err) return deferred.resolve();
 
-        if(!accessToken) return deferred.resolve();
+        if(!accessTokens || !accessTokens.length) return deferred.resolve();
 
+        var accessToken = accessTokens[0];
         return res.send(200, accessToken);
       })
     });
