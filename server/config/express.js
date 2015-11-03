@@ -14,6 +14,14 @@ var cookieParser = require('cookie-parser');
 var errorHandler = require('errorhandler');
 var path = require('path');
 var config = require('./environment');
+var allowCrossDomain = function(req, res, next) {
+  // allow cors request for localhost:8999
+  res.header('Access-Control-Allow-Origin', 'http://localhost:8999');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+
+  next();
+};
 
 module.exports = function(app) {
   var env = app.get('env');
@@ -24,8 +32,9 @@ module.exports = function(app) {
   app.use(bodyParser.urlencoded({ extended: false }));
   app.use(bodyParser.json());
   app.use(methodOverride());
+  app.use(allowCrossDomain);
   app.use(cookieParser());
-  
+
   if ('production' === env) {
     app.use(favicon(path.join(config.root, 'public', 'favicon.ico')));
     app.use(express.static(path.join(config.root, 'public')));
