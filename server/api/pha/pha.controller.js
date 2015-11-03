@@ -70,15 +70,15 @@ function proceedTokenCreation(res, data) {
       if (err) return handleError(res, err);
 
       if (!regData) {
-        deferred.reject(403);
+        return deferred.reject(403);
       }
 
       if (regData.attemptsCount <= 0) {
         inMemoryRegData.del(data.phoneNumber, function (err) {
           if (err) return handleError(res, err);
           //redirect to sms code sending
-          deferred.reject(403);
         });
+        return deferred.reject(403);
       }
 
       if (!(regData.smsCode === data.smsCode && regData.phoneNumber === data.phoneNumber && regData.code === data.code)) {
@@ -87,9 +87,9 @@ function proceedTokenCreation(res, data) {
           if (err) handleError(res, err);
         });
         //redirect to sms code sending
-        deferred.reject(400);
+        return deferred.reject(400);
       }
-      deferred.resolve();
+      return deferred.resolve();
     });
     return deferred.promise;
   }
@@ -171,9 +171,9 @@ function processPhoneNumber(res, phoneNumber) {
 
   function generateSms() {
     var deferred = Q.defer();
-    crypto.randomBytes(3, function(err, buffer) {
+    crypto.randomBytes(3, function (err, buffer) {
       if (err) deferred.reject(err);
-      var smsCode = parseInt(buffer.toString('hex'), 16).toString().substr(0,6);
+      var smsCode = parseInt(buffer.toString('hex'), 16).toString().substr(0, 6);
       deferred.resolve(smsCode);
     });
     return deferred.promise;
@@ -188,6 +188,7 @@ function processPhoneNumber(res, phoneNumber) {
         'authorization': SMS_SERVICE_TOKEN
       }
     };
+
     function callback(error, res) {
       if (!error && res.statusCode == 200) {
         console.log('Sms message sent...');
@@ -196,6 +197,7 @@ function processPhoneNumber(res, phoneNumber) {
         deferred.reject('Sms was not sent!');
       }
     }
+
     request.get(options, callback);
     return deferred.promise;
   }

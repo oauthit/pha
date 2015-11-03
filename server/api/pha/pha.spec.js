@@ -112,7 +112,7 @@ describe('POST /api/pha/token', function () {
 
   var regData = {
     attemptsCount: 3,
-    smsCode: 'code',
+    smsCode: 'smsCode',
     code: 'code',
     phoneNumber: 'phoneNumber'
   };
@@ -167,7 +167,7 @@ describe('POST /api/pha/token', function () {
       .post('/api/pha/token')
       .send(account)
       .expect(403)
-      .expect('Content-Type', /json/)
+      .expect('Content-Type', /text/)
       .end(function (err) {
         if (err) return done(err);
         done();
@@ -183,8 +183,8 @@ describe('POST /api/pha/token', function () {
     request(app)
       .post('/api/pha/token')
       .send(account)
-      .expect(200)
-      .expect('Content-Type', /json/)
+      .expect(403)
+      .expect('Content-Type', /text/)
       .end(function (err) {
         if (err) return done(err);
         done();
