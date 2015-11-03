@@ -266,7 +266,7 @@ function processPhoneNumber(res, phoneNumber) {
 
       if (err) return deferred.resolve();
 
-      if (!accounts && !accounts.length) return deferred.resolve();
+      if (!accounts || !accounts.length) return deferred.resolve();
       var account = accounts[0];
       console.log(account);
 

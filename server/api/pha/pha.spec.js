@@ -11,11 +11,19 @@ var uuid = require('node-uuid');
 var InMemory = require('../../lib/inMemory');
 
 describe('POST /api/pha/auth/:phoneNumber', function () {
-  var requestStub, inMemoryRegAccountsGet, inMemoryRegAccountsSet;
+  var requestStub
+    , inMemoryRegAccountsGet
+    , inMemoryRegAccountsSet
+    , accountScan
+    , accessTokenScan;
+
   beforeEach(function (done) {
     requestStub = sinon.stub(req, 'get').yieldsAsync(null, {statusCode: 200});
     inMemoryRegAccountsGet = sinon.stub(InMemory.prototype, 'get');
     inMemoryRegAccountsSet = sinon.stub(InMemory.prototype, 'set');
+    accessTokenScan = sinon.stub(AccessToken, 'scan');
+    accountScan = sinon.stub(Account, 'scan');
+
     done();
   });
 
@@ -23,6 +31,8 @@ describe('POST /api/pha/auth/:phoneNumber', function () {
     requestStub.restore();
     inMemoryRegAccountsGet.restore();
     inMemoryRegAccountsSet.restore();
+    accessTokenScan.restore();
+    accountScan.restore();
   });
 
   it('should return code and sms code', function (done) {
@@ -33,6 +43,8 @@ describe('POST /api/pha/auth/:phoneNumber', function () {
     var phoneNumber = '12345';
     inMemoryRegAccountsGet.withArgs(phoneNumber).yieldsAsync(null, account);
     inMemoryRegAccountsSet.withArgs(phoneNumber).yieldsAsync(null);
+    accountScan.withArgs({phoneNumber: phoneNumber}).yieldsAsync(null, null);
+
     request(app)
       .post('/api/pha/auth/' + phoneNumber)
       .expect(201)
@@ -41,7 +53,6 @@ describe('POST /api/pha/auth/:phoneNumber', function () {
         if (err) return done(err);
         res.body.should.have.property('phoneNumber');
         res.body.should.have.property('code');
-        res.body.should.have.property('smsCode');
         done();
       });
   });
@@ -51,6 +62,7 @@ describe('POST /api/pha/auth/:phoneNumber', function () {
 
     inMemoryRegAccountsGet.withArgs(phoneNumber).yieldsAsync(null, null);
     inMemoryRegAccountsSet.withArgs(phoneNumber).yieldsAsync(null);
+    accountScan.withArgs({phoneNumber: phoneNumber}).yieldsAsync(null, null);
 
     request(app)
       .post('/api/pha/auth/' + phoneNumber)
@@ -60,7 +72,6 @@ describe('POST /api/pha/auth/:phoneNumber', function () {
         if (err) return done(err);
         res.body.should.have.property('phoneNumber');
         res.body.should.have.property('code');
-        res.body.should.have.property('smsCode');
         done();
       });
   });
@@ -72,6 +83,8 @@ describe('POST /api/pha/auth/:phoneNumber', function () {
       lastAttempt: Date.now()
     };
     inMemoryRegAccountsGet.withArgs(phoneNumber).yieldsAsync(null, account);
+    accountScan.withArgs({phoneNumber: phoneNumber}).yieldsAsync(null, null);
+
     request(app)
       .post('/api/pha/auth/' + phoneNumber)
       .expect(403)
@@ -91,6 +104,7 @@ describe('POST /api/pha/auth/:phoneNumber', function () {
 
     inMemoryRegAccountsGet.withArgs(phoneNumber).yieldsAsync(null, account);
     inMemoryRegAccountsSet.withArgs(phoneNumber).yieldsAsync(null);
+    accountScan.withArgs({phoneNumber: phoneNumber}).yieldsAsync(null, null);
 
     request(app)
       .post('/api/pha/auth/' + phoneNumber)
