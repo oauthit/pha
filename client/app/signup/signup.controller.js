@@ -4,7 +4,6 @@ angular.module('phaApp')
   .controller('SignupCtrl', ['$http', '$state', '$mdToast',
     function ($http, $state, $mdToast) {
       var me = this;
-      var smsCode;
       me.code = false;
 
       me.sendPhoneNumber = function () {
@@ -12,7 +11,6 @@ angular.module('phaApp')
         $http.post('/api/pha/auth/' + me.phoneNumber)
           .then(function (res) {
             me.code = res.data.code;
-            smsCode = res.data.smsCode;
           }, function () {
             $mdToast.show($mdToast.simple().content('Неправильный телефон'));
             //show message when max attempts exceeded
@@ -20,25 +18,17 @@ angular.module('phaApp')
       };
 
       me.confirmSmsCode = function () {
-        function validateSmsCode() {
-          if (smsCode) {
-            if (smsCode !== me.smsCode) {
-              $mdToast.show($mdToast.simple().content('Неверный смс код'));
-            }
-          }
-        }
-
-        validateSmsCode();
         var data = {
           phoneNumber: me.phoneNumber,
-          code: me.code,
-          smsCode: me.smsCode
+          smsCode: me.smsCode,
+          code: me.code
         };
         $http.post('/api/pha/token', data)
           .then(function (res) {
             $state.go('authorized', res);
           }, function (err) {
             if (err.status === 400) {
+              $mdToast.show($mdToast.simple().content('Неправильный телефон'));
               //show how many retries left
             } else {
               me.code = false;
