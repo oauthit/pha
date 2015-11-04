@@ -47,8 +47,9 @@ exports.token = function (req, res) {
 };
 
 exports.roles = function (req, res) {
-  if (req.query.accessToken) {
-    AccessToken.scan({code: req.query.accessToken}, function (err, accessTokens) {
+  var token = req.headers['authorization'] || req.query.accessToken;
+  if (token) {
+    AccessToken.scan({code: token}, function (err, accessTokens) {
       if (err) return handleError(res, err);
       if (!accessTokens || !accessTokens.length) {
         return res.send(403);
