@@ -1,0 +1,12 @@
+.col-lg-8.col-lg-offset-2
+  h1 Войти
+    form(action='/api/auth/login', method='post')
+      .form-group.floating-label-form-group
+        input#emailAddress.form-control(type='email', name='emailAddress', placeholder='Електроная почта')
+      .form-group.floating-label-form-group
+        input#password.form-control(type='password', name='password', placeholder='Пароль')
+      button.btn.btn-success(type='submit') Вход
+    hr
+    p
+      a(href='/') Главная
+      a(href='/register') Регистрация
