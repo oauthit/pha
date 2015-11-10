@@ -255,78 +255,49 @@ function processPhoneNumber(res, phoneNumber) {
     });
   }
 
-  /**
-   * Return access token if already registered
-   *
-   * @param phoneNumber
-   * @returns {deferred.promise|{then, always}}
-   */
-  function checkIfAlreadySignedIn(phoneNumber) {
-    var deferred = Q.defer();
-    Account.scan({phoneNumber: phoneNumber}, function (err, accounts) {
-
-      if (err) return deferred.resolve();
-
-      if (!accounts || !accounts.length) return deferred.resolve();
-      var account = accounts[0];
-      console.log(account);
-
-      AccessToken.scan({accountId: account.id}, function (err, accessTokens) {
-        if (err) return deferred.resolve();
-
-        if(!accessTokens || !accessTokens.length) return deferred.resolve();
-
-        var accessToken = accessTokens[0];
-        return res.send(200, accessToken);
-      })
-    });
-    return deferred.promise;
-  }
 
   checkPhoneNumber(phoneNumber);
-  checkIfAlreadySignedIn(phoneNumber).then(function () {
-    inMemoryRegAccounts.get(phoneNumber, function (err, account) {
-      if (err) {
-        return handleError(res, err);
-      }
+  inMemoryRegAccounts.get(phoneNumber, function (err, account) {
+    if (err) {
+      return handleError(res, err);
+    }
 
-      if (!account) {
-        //set initial regAcc
-        var regAcc = {
-          lastAttempt: Date.now(),
-          attemptsCount: NUM_SENDING_COUNT
-        };
-        registerAccount(res, phoneNumber, regAcc, function (regData) {
-          registerData(res, phoneNumber, regData);
+    if (!account) {
+      //set initial regAcc
+      var regAcc = {
+        lastAttempt: Date.now(),
+        attemptsCount: NUM_SENDING_COUNT
+      };
+      registerAccount(res, phoneNumber, regAcc, function (regData) {
+        registerData(res, phoneNumber, regData);
+      });
+    }
+    else {
+      account.attemptsCount--;
+      if (account.attemptsCount > 0) {
+        account.lastAttempt = Date.now();
+        inMemoryRegAccounts.set(phoneNumber, account, function (err) {
+          if (err) return handleError(res, err);
+          registerAccount(res, phoneNumber, account, function (regData) {
+            registerData(res, phoneNumber, regData);
+          });
         });
-      }
-      else {
-        account.attemptsCount--;
-        if (account.attemptsCount > 0) {
-          account.lastAttempt = Date.now();
-          inMemoryRegAccounts.set(phoneNumber, account, function (err) {
-            if (err) return handleError(res, err);
-            registerAccount(res, phoneNumber, account, function (regData) {
-              registerData(res, phoneNumber, regData);
-            });
+      } else {
+        var timePassedSinceLastAttempt = Date.now() - account.lastAttempt;
+        if (timePassedSinceLastAttempt >= PHONE_BLOCK_TIME) {
+          account.attemptsCount = NUM_SENDING_COUNT;
+          registerAccount(res, phoneNumber, account, function (regData) {
+            registerData(res, phoneNumber, regData);
           });
         } else {
-          var timePassedSinceLastAttempt = Date.now() - account.lastAttempt;
-          if (timePassedSinceLastAttempt >= PHONE_BLOCK_TIME) {
-            account.attemptsCount = NUM_SENDING_COUNT;
-            registerAccount(res, phoneNumber, account, function (regData) {
-              registerData(res, phoneNumber, regData);
-            });
-          } else {
-            var blockingTime = PHONE_BLOCK_TIME - timePassedSinceLastAttempt;
-            var until = new Date(Date.now() + blockingTime);
-            res.send(403, {
-              message: 'This phone number blocked until ' + until
-            });
-          }
+          var blockingTime = PHONE_BLOCK_TIME - timePassedSinceLastAttempt;
+          var until = new Date(Date.now() + blockingTime);
+          res.send(403, {
+            message: 'This phone number blocked until ' + until
+          });
         }
       }
-    });
+    }
   });
 }
 
