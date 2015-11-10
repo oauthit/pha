@@ -434,14 +434,6 @@ module.exports = function (grunt) {
       ]
     },
 
-    // Test settings
-    karma: {
-      unit: {
-        configFile: 'karma.conf.js',
-        singleRun: true
-      }
-    },
-
     mochaTest: {
       options: {
         reporter: 'spec'
@@ -650,8 +642,7 @@ module.exports = function (grunt) {
         'injector:sass',
         'concurrent:test',
         'injector',
-        'autoprefixer',
-        'karma'
+        'autoprefixer'
       ]);
     }
 
@@ -672,7 +663,7 @@ module.exports = function (grunt) {
 
     else grunt.task.run([
       'test:server',
-      'test:client'
+      //'test:client'
     ]);
   });
 
