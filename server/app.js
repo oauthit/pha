@@ -10,14 +10,7 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 var express = require('express');
 
 var config = require('./config/environment');
-var dynamoose = require('dynamoose');
-
-dynamoose.defaults.waitForActiveTimeout = 100;
-dynamoose.AWS.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION || "eu-west-1"
-});
+require('./config/dynamoose.config');
 
 // Setup server
 var app = express();

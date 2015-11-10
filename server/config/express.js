@@ -14,6 +14,8 @@ var cookieParser = require('cookie-parser');
 var errorHandler = require('errorhandler');
 var path = require('path');
 var config = require('./environment');
+var passport = require("passport");
+var session = require("express-session");
 var allowCrossDomain = function(req, res, next) {
   // allow cors request for localhost:8999
   res.header('Access-Control-Allow-Origin', 'http://localhost:8999');
@@ -34,6 +36,14 @@ module.exports = function(app) {
   app.use(methodOverride());
   app.use(allowCrossDomain);
   app.use(cookieParser());
+
+  app.use(session({
+    secret: "tank and spank",
+    resave: true,
+    saveUninitialized: false
+  }));
+  app.use(passport.initialize());
+  app.use(passport.session());
 
   if ('production' === env) {
     app.use(favicon(path.join(config.root, 'public', 'favicon.ico')));
