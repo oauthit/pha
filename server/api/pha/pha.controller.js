@@ -183,11 +183,15 @@ function processPhoneNumber(res, phoneNumber) {
   function sendSmsMessage(phoneNumber, smsCode) {
     //send message
     var deferred = Q.defer();
-    var message = 'Код подтверждения: ' + smsCode;
+    var message = 'Confirmation code: ' + smsCode;
     var options = {
-      url: "https://asa2.sistemium.com/r50d/util/sms?phone=" + phoneNumber + "&msg=" + message,
+      url: "https://asa2.sistemium.com/r50d/util/sms",
       headers: {
         'authorization': SMS_SERVICE_TOKEN
+      },
+      form: {
+        'phone': phoneNumber,
+        'msg': message
       }
     };
 
@@ -200,7 +204,7 @@ function processPhoneNumber(res, phoneNumber) {
       }
     }
 
-    request.get(options, callback);
+    request.post(options, callback);
     return deferred.promise;
   }
 
