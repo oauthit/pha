@@ -8,7 +8,7 @@ let redis = require('redis');
 let redisClient = redis.createClient();
 let Account = require('./pha.models').account;
 let AccessToken = require('./pha.models').accessToken;
-let NUM_SENDING_COUNT = process.env.PHONE_NUMBER_SENDING_COUNT || 1;
+let NUM_SENDING_COUNT = process.env.PHONE_NUMBER_SENDING_COUNT || 3;
 let SMS_SENDING_COUNT = process.env.SMS_SENDING_COUNT || 3;
 let PHONE_BLOCK_TIME = process.env.PHONE_NUMBER_BLOCKING_TIME || 24 * 60 * 60 * 1000;
 let TOKEN_EXISTENCE_TIME = process.env.TOKEN_EXISTENCE_TIME || 24 * 60 * 60 * 1000;
@@ -131,7 +131,7 @@ exports.auth = function (req, res) {
       console.log(regAccount);
 
       // retries for phoneNumber exceeded
-      if (regAccount.attemptsCount === 0) {
+      if (regAccount.attemptsCount === 1) {
         let timePassedSinceLastAttempt = Date.now() - regAccount.lastAttempt;
         if (timePassedSinceLastAttempt >= PHONE_BLOCK_TIME) {
           regAccount.attemptsCount = NUM_SENDING_COUNT;
@@ -220,7 +220,8 @@ exports.token = function (req, res) {
     }
 
     let regData = yield getRegData(data.phoneNumber);
-    if (regData.attemptsCount <= 0) {
+    console.log(regData);
+    if (regData.smsSendingAttempts === 1) {
       yield delRegData(data.phoneNumber);
       res.json(403, {
         message: 'The maximum attempts count was exceeded'
@@ -228,7 +229,7 @@ exports.token = function (req, res) {
       throw new Error('The maximum attempts count was exceeded');
     }
     if (!(regData.smsCode === data.smsCode && regData.phoneNumber === data.phoneNumber && regData.code === data.code)) {
-      regData.attemptsCount--;
+      regData.smsSendingAttempts--;
       yield setRegData(regData);
       res.json(400, {
         message: 'Validation failed, incorrect credentials'
