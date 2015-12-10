@@ -20,7 +20,7 @@ var allowCrossDomain = function(req, res, next) {
   // allow cors request for localhost:8999
   res.header('Access-Control-Allow-Origin', 'http://localhost:8999');
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type', 'Authorization', 'accept');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,accept');
 
   next();
 };
