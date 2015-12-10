@@ -8,7 +8,7 @@ let redis = require('redis');
 let redisClient = redis.createClient();
 let Account = require('./pha.models').account;
 let AccessToken = require('./pha.models').accessToken;
-let NUM_SENDING_COUNT = process.env.PHONE_NUMBER_SENDING_COUNT || 3;
+let NUM_SENDING_COUNT = process.env.PHONE_NUMBER_SENDING_COUNT || 1;
 let SMS_SENDING_COUNT = process.env.SMS_SENDING_COUNT || 3;
 let PHONE_BLOCK_TIME = process.env.PHONE_NUMBER_BLOCKING_TIME || 24 * 60 * 60 * 1000;
 let TOKEN_EXISTENCE_TIME = process.env.TOKEN_EXISTENCE_TIME || 24 * 60 * 60 * 1000;
@@ -22,7 +22,7 @@ redisClient.on("error", function (err) {
 
 exports.auth = function (req, res) {
 
-  var phoneNumber = req.params.phoneNumber || undefined;
+  let phoneNumber = req.params.phoneNumber || undefined;
   if (!phoneNumber) {
     return res.send(400, {
       message: 'Phone number must be passed'
@@ -126,10 +126,25 @@ exports.auth = function (req, res) {
         phoneNumber: phoneNumber
       };
     } else {
+      regAccount = JSON.parse(regAccount);
       regAccount.attemptsCount--;
-      if (regAccount.attemptsCount > 0) {
-        regAccount.lastAttempt = Date.now();
+      console.log(regAccount);
+
+      // retries for phoneNumber exceeded
+      if (regAccount.attemptsCount === 0) {
+        let timePassedSinceLastAttempt = Date.now() - regAccount.lastAttempt;
+        if (timePassedSinceLastAttempt >= PHONE_BLOCK_TIME) {
+          regAccount.attemptsCount = NUM_SENDING_COUNT;
+        } else {
+          let blockingTime = PHONE_BLOCK_TIME - timePassedSinceLastAttempt;
+          let until = new Date(Date.now() + blockingTime);
+          res.json(403, {
+            message: 'This phone number blocked until ' + until});
+          throw Error('This phone number blocked until ' + until);
+        }
       }
+
+      regAccount.lastAttempt = Date.now();
     }
 
     yield registerAccount(regAccount);
@@ -141,7 +156,6 @@ exports.auth = function (req, res) {
     co(function *() {
         try {
           let regAccount = yield getRegAccount(phoneNumber);
-
           let data = yield* createRegAccount(phoneNumber, regAccount);
           return res.json(201, {
             code: data.code,
@@ -208,10 +222,18 @@ exports.token = function (req, res) {
     let regData = yield getRegData(data.phoneNumber);
     if (regData.attemptsCount <= 0) {
       yield delRegData(data.phoneNumber);
+      res.json(403, {
+        message: 'The maximum attempts count was exceeded'
+      });
+      throw new Error('The maximum attempts count was exceeded');
     }
     if (!(regData.smsCode === data.smsCode && regData.phoneNumber === data.phoneNumber && regData.code === data.code)) {
       regData.attemptsCount--;
       yield setRegData(regData);
+      res.json(400, {
+        message: 'Validation failed, incorrect credentials'
+      });
+      throw new Error('Validation failed, incorrect credentials');
     }
   }
 
@@ -288,14 +310,22 @@ exports.token = function (req, res) {
 
   if (smsCode && code && phoneNumber) {
     co(function *() {
-      yield* checkIfSmsCodeValid(fromBody);
-      let accounts = yield findAccount(phoneNumber);
-      let accessToken = yield* regAccount(accounts, phoneNumber);
-      return res.json(201, accessToken);
+      try {
+        yield* checkIfSmsCodeValid(fromBody);
+        let accounts = yield findAccount(phoneNumber);
+        let accessToken = yield* regAccount(accounts, phoneNumber);
+        return res.json(201, accessToken);
+      } catch (err) {
+        console.log(err);
+      }
+    }).catch(function (err) {
+      console.log(err);
     });
   } else {
-    // invalid validation
-    return res.send(403);
+    // incorrect data passed
+    return res.json(400, {
+      message: 'Incorrect data was passed'
+    });
   }
 };
 
@@ -325,16 +355,22 @@ exports.roles = function (req, res) {
         });
       }
 
-      let accTokens = yield scanToken(token);
-      if (!accTokens || !accTokens.length) {
-        return res.send(403);
+      try {
+        let accTokens = yield scanToken(token);
+        if (!accTokens || !accTokens.length) {
+          return res.send(403);
+        }
+        let accToken = accTokens[0];
+        let acc = yield getAccount(accToken.accountId);
+        if (!acc) {
+          return res.send(403);
+        }
+        return res.json(200, acc);
+      } catch (err) {
+        console.log(err);
       }
-      let accToken = accTokens[0];
-      let acc = yield getAccount(accToken.accountId);
-      if (!acc) {
-        return res.send(403);
-      }
-      return res.json(200, acc);
+    }).catch(function (err) {
+      console.log(err);
     });
   }
 };
